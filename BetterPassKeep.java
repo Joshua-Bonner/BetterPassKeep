@@ -175,10 +175,10 @@ public class BetterPassKeep {
 			Arrays.fill( s,'0' );
 
 			//not 100% certain about this algorithm, mainly b/c it may be outdated
-			SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance( "PBEWithSHA256AndAES_128" );
+			SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance( "PBEWithHmacSHA256AndAES_128" );
 			SecretKey secretKey = secretKeyFactory.generateSecret( pbeKeySpec );
 
-			Cipher cipher = Cipher.getInstance( "PBEWithSHA256AndAES_128" );
+			Cipher cipher = Cipher.getInstance( "PBEWithHmacSHA256AndAES_128" );
 			cipher.init( Cipher.ENCRYPT_MODE,secretKey );
 
 			byte[] cipherText = cipher.doFinal(String.valueOf(password).getBytes("UTF-8"));
@@ -191,22 +191,20 @@ public class BetterPassKeep {
 			userList.add( encodedPass );
 
 			idList.add( id );
+			int i = idList.indexOf( id );
 
-			File passKeep = new File("PassKeep");
+			FileWriter passKeep = new FileWriter("PassKeep", true);
 			pw = new PrintWriter(passKeep);
-			for ( int i = 0; i < idList.size() ; i++ )
-			{
-				pw.println(idList.get(i) +"\t"+ userList.get(i) +"\t"+ passList.get(i));
-			}
+			pw.println(idList.get(i) +"\t"+ userList.get(i) +"\t"+ passList.get(i));
 			pw.close();
 		}
 		catch ( NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeySpecException | InvalidKeyException
-				| BadPaddingException | UnsupportedEncodingException | IllegalBlockSizeException | FileNotFoundException e )
+				| BadPaddingException | IllegalBlockSizeException | IOException e )
 		{
+			e.printStackTrace();	//TODO: Remove this line - Debugging ONLY!!!!!!
 			System.out.println( "Error. Can not add Username and Password Combo." );
 			Arrays.fill( s,'0' );	//double check just in case program fails before the one in the try block
 		}
-
 	}
 
 	public static void cls() throws InterruptedException{

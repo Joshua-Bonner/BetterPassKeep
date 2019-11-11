@@ -14,7 +14,10 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.*;
 import java.util.stream.*;
 import javax.crypto.*;
+import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.PBEParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 
 public class BetterPassKeep {
 
@@ -113,10 +116,8 @@ public class BetterPassKeep {
           	if (isFileCreated == false)
           		System.out.println("\nFile not created! Please choose option 1");
           	else if(verifyPassword()){
-				// TODO: add method to add passwords
-				readFile();	//read username/passwords from current file
-				addPassword();	//add username/passwords to arraylists
-				//TODO: add username/passwords in arraylist to current file
+          		readFile();
+				addPassword();
           	}
           	cls();
           	break;
@@ -125,7 +126,11 @@ public class BetterPassKeep {
           case 4:
           	if (isFileCreated == false)
             	System.out.println("\nFile not created! Please choose option 1");
-          	// TODO: Add method to Decrypt File with Master Password and Then Show Results
+          	else if (verifyPassword()){
+				// TODO: Add method to Decrypt File with Master Password and Then Show Results
+				readFile();
+				printFile();
+			}
 		  	cls();
           	break;
 					
@@ -152,7 +157,58 @@ public class BetterPassKeep {
       System.out.println("\nUnknown Error Occured");
 	}
 
-	public static void addPassword(){
+	public static void printFile()
+	{
+		char[] s = {0}, idChar = {0};
+		byte[] user = {0}, pass = {0}, salt = {0};
+		Base64.Decoder decoder = Base64.getDecoder();
+
+		try{
+			s = passList.get(0).toCharArray();
+			PBEKeySpec pbeKeySpec = new PBEKeySpec( s );
+			Arrays.fill(s, '0');
+
+			br = new BufferedReader(new FileReader("HashNum"));
+			salt = br.readLine().getBytes(  );
+
+
+			SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance( "PBEWithHmacSHA256AndAES_128" );
+			SecretKey secretKey = secretKeyFactory.generateSecret( pbeKeySpec );
+
+			//don't know what the iteration count (10000) does....
+			PBEParameterSpec pbeParameterSpec = new PBEParameterSpec( salt,10000 );
+
+
+			Arrays.fill( salt, (byte)0 );
+
+			Cipher cipher = Cipher.getInstance( "PBEWithHmacSHA256AndAES_128" );
+			cipher.init( Cipher.DECRYPT_MODE, secretKey, pbeParameterSpec );
+
+			//i starts at 1 because we don't want to print the master stuff
+			for ( int i = 1; i < idList.size() ; i++ )
+			{
+				idChar = idList.get( i ).toCharArray();
+				user = cipher.doFinal( decoder.decode( userList.get( i ) ) );
+				pass = cipher.doFinal( decoder.decode( passList.get( i ) ) );
+				System.out.print( idChar + "\t" + user + "\t" + pass );
+				Arrays.fill( idChar, '0' );
+				Arrays.fill( user, ( byte ) 0 );
+				Arrays.fill( pass, (byte) 0 );
+			}
+
+		}catch ( Exception e ){
+			e.printStackTrace();	//TODO: Remove - debugging only
+			System.out.println( "Error" );
+			Arrays.fill(s, '0');
+			Arrays.fill( idChar, '0' );
+			Arrays.fill( user, ( byte ) 0 );
+			Arrays.fill( pass, (byte) 0 );
+			Arrays.fill( salt, (byte)0 );
+		}
+	}
+
+	public static void addPassword() throws InterruptedException
+	{
 		Scanner sc = new Scanner( System.in );
 		char[] s = {'0'};
 		Base64.Encoder enc = Base64.getEncoder();
@@ -161,7 +217,7 @@ public class BetterPassKeep {
 		System.out.println( "Enter an ID for your username and password combination: " );
 		String id = sc.nextLine();
 		System.out.println( "Enter the username for " + id + " : " );
-		String userName = sc.nextLine();
+		char[] userName = sc.nextLine().toCharArray();
 		System.out.println( "Enter the password for " + id + " : " );
 		char[] password = con.readPassword();
 
@@ -174,25 +230,26 @@ public class BetterPassKeep {
 			//https://nvisium.com/blog/2016/03/31/secure-password-strings.html
 			Arrays.fill( s,'0' );
 
-			//not 100% certain about this algorithm, mainly b/c it may be outdated
 			SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance( "PBEWithHmacSHA256AndAES_128" );
 			SecretKey secretKey = secretKeyFactory.generateSecret( pbeKeySpec );
 
 			Cipher cipher = Cipher.getInstance( "PBEWithHmacSHA256AndAES_128" );
 			cipher.init( Cipher.ENCRYPT_MODE,secretKey );
 
-			byte[] cipherText = cipher.doFinal(String.valueOf(password).getBytes("UTF-8"));
+			byte[] cipherText = cipher.doFinal(String.valueOf(password).getBytes( StandardCharsets.UTF_8 ));
 			Arrays.fill( password,'0' );
 			String encodedPass = enc.encodeToString(cipherText);
 			passList.add( encodedPass );
 
-			cipherText = cipher.doFinal(userName.getBytes("UTF-8"));
+			cipherText = cipher.doFinal(String.valueOf(userName).getBytes( StandardCharsets.UTF_8 ));
+			Arrays.fill( userName,'0' );
 			encodedPass = enc.encodeToString(cipherText);
 			userList.add( encodedPass );
 
 			idList.add( id );
 			int i = idList.indexOf( id );
 
+			//true allows appending instead of re-writing
 			FileWriter passKeep = new FileWriter("PassKeep", true);
 			pw = new PrintWriter(passKeep);
 			pw.println(idList.get(i) +"\t"+ userList.get(i) +"\t"+ passList.get(i));
@@ -204,6 +261,9 @@ public class BetterPassKeep {
 			e.printStackTrace();	//TODO: Remove this line - Debugging ONLY!!!!!!
 			System.out.println( "Error. Can not add Username and Password Combo." );
 			Arrays.fill( s,'0' );	//double check just in case program fails before the one in the try block
+			Arrays.fill( password,'0' );
+			Arrays.fill( userName,'0' );
+			pw.close();
 		}
 	}
 

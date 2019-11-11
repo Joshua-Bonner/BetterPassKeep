@@ -10,9 +10,11 @@ import java.math.*;
 import java.security.MessageDigest;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
+import java.security.spec.InvalidKeySpecException;
 import java.util.*;
 import java.util.stream.*;
 import javax.crypto.*;
+import javax.crypto.spec.PBEKeySpec;
 
 public class BetterPassKeep {
 
@@ -32,29 +34,30 @@ public class BetterPassKeep {
 	throws IOException, NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, 
 				 IllegalBlockSizeException, BadPaddingException, UnsupportedEncodingException, 
 				 InvalidAlgorithmParameterException, InterruptedException, NoSuchProviderException {
-				 
-			boolean correctInput = false;
-      int userChoice = -1;
-      File passKeep = new File("PassKeep");
-      isFileCreated = passKeep.exists();
-			if (isFileCreated == true){
-      			readFile();
-      			if(!verifyPassword()) System.exit(0);
-      }
-      
-			// USER MENU
-			cls();
+
+	  boolean correctInput = false;
+	  int userChoice = -1;
+	  File passKeep = new File("PassKeep");
+	  isFileCreated = passKeep.exists();
+	  if (isFileCreated == true){
+	  	readFile();
+	  	if(!verifyPassword()) System.exit(0);
+	  }
+
+	  cls();
+
+	  // USER MENU
       do {
       	do {
-					System.out.println("Welcome to Password Keeper\n\n"
-          + "Please select from the following options:\n"
-          + "   1. Initialize Password Keeper file\n"
-          + "   2. Change master password\n"
-          + "   3. Add new password\n"
-          + "   4. Retrieve password information\n"
-          + "   5. Share password information\n"
-          + "   6. Exit Password Keeper");
-          System.out.print("User Input : ");
+      		System.out.println("Welcome to Password Keeper\n\n"
+          	+ "Please select from the following options:\n"
+          	+ "   1. Initialize Password Keeper file\n"
+          	+ "   2. Change master password\n"
+          	+ "   3. Add new password\n"
+          	+ "   4. Retrieve password information\n"
+          	+ "   5. Share password information\n"
+          	+ "   6. Exit Password Keeper");
+          	System.out.print("User Input : ");
 
           if (sc.hasNextInt()){
           	userChoice = sc.nextInt();
@@ -65,12 +68,12 @@ public class BetterPassKeep {
             System.out.println("\nIncorrect input, please provide an integer numbered 1 through 6\n");
             cls();
           }
-				} while (correctInput == false);
+      	} while (correctInput == false);
 
-				// USER MENU CHOICES
-				switch (userChoice){
-				
-					// INITIALIZE PASSWORD FILE WITH A USER CREATED MASTER PASSWORD
+      	// USER MENU CHOICES
+	  	switch (userChoice){
+
+	  		// INITIALIZE PASSWORD FILE WITH A USER CREATED MASTER PASSWORD
           case 1:
           	if (isFileCreated == true){
           		if(verifyPassword()){
@@ -95,54 +98,115 @@ public class BetterPassKeep {
             cls();
           	break;
 					
-					// CHANGE MASTER PASSWORD
+          	// CHANGE MASTER PASSWORD
           case 2:
-						if (isFileCreated == false)
-							System.out.println("\nFile not created! Please choose option 1");
-						else if(verifyPassword()){
-							// TODO: add method to change master password
-						}
-						cls();
+          	if (isFileCreated == false)
+          		System.out.println("\nFile not created! Please choose option 1");
+          	else if(verifyPassword()){
+			// TODO: add method to change master password
+          	}
+          	cls();
           	break;
-					
-					// ADD PASSWORDS
+
+			// ADD PASSWORDS
           case 3:
-						if (isFileCreated == false)
-							System.out.println("\nFile not created! Please choose option 1");
-						else if(verifyPassword()){
-						// TODO: add method to add passwords
-						}
-						cls();	
+          	if (isFileCreated == false)
+          		System.out.println("\nFile not created! Please choose option 1");
+          	else if(verifyPassword()){
+				// TODO: add method to add passwords
+				readFile();	//read username/passwords from current file
+				addPassword();	//add username/passwords to arraylists
+				//TODO: add username/passwords in arraylist to current file
+          	}
+          	cls();
           	break;
 					
-					// PRINT PASSWORD FILE CONTENTS
+          	// PRINT PASSWORD FILE CONTENTS
           case 4:
           	if (isFileCreated == false)
             	System.out.println("\nFile not created! Please choose option 1");
-						// TODO: Add method to Decrypt File with Master Password and Then Show Results
-						cls();	
+          	// TODO: Add method to Decrypt File with Master Password and Then Show Results
+		  	cls();
           	break;
 					
-					// SHARE FILE
+          	// SHARE FILE
           case 5:
           	if (isFileCreated == false)
             	System.out.println("\nFile not created! Please choose option 1");
-						// TODO: Add method to Share a password in a seperate file
-						cls();	
+          	// TODO: Add method to Share a password in a seperate file
+		  	cls();
           	break;
 
-					// EXIT PROGRAM
-     	    case 6:
-     	    	System.out.println("\nThank you for using Password Keeper!\n");
-     	    	cls();
-            System.exit(0);
-          	break;
+          	// EXIT PROGRAM
+		  case 6:
+		  	System.out.println("\nThank you for using Password Keeper!\n");
+		  	cls();
+		  	System.exit(0);
+		  	break;
             
-          default: System.out.println("\nIncorrect input, please provide an integer numbered 1 through 6\n"); 
-          cls();
+          default:
+          	System.out.println("\nIncorrect input, please provide an integer numbered 1 through 6\n");
+          	cls();
         }
 			} while (userChoice != 6);
-    System.out.println("\nUnknown Error Occured");
+      System.out.println("\nUnknown Error Occured");
+	}
+
+	public static void addPassword(){
+		Scanner sc = new Scanner( System.in );
+		char[] s = {'0'};
+		Base64.Encoder enc = Base64.getEncoder();
+
+		//Read in new username/password combo
+		System.out.println( "Enter an ID for your username and password combination: " );
+		String id = sc.nextLine();
+		System.out.println( "Enter the username for " + id + " : " );
+		String userName = sc.nextLine();
+		System.out.println( "Enter the password for " + id + " : " );
+		char[] password = con.readPassword();
+
+		//Encrypt
+		try
+		{
+			s = passList.get(0).toCharArray();
+			PBEKeySpec pbeKeySpec = new PBEKeySpec( s );
+
+			//https://nvisium.com/blog/2016/03/31/secure-password-strings.html
+			Arrays.fill( s,'0' );
+
+			//not 100% certain about this algorithm, mainly b/c it may be outdated
+			SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance( "PBEWithSHA256AndAES_128" );
+			SecretKey secretKey = secretKeyFactory.generateSecret( pbeKeySpec );
+
+			Cipher cipher = Cipher.getInstance( "PBEWithSHA256AndAES_128" );
+			cipher.init( Cipher.ENCRYPT_MODE,secretKey );
+
+			byte[] cipherText = cipher.doFinal(String.valueOf(password).getBytes("UTF-8"));
+			Arrays.fill( password,'0' );
+			String encodedPass = enc.encodeToString(cipherText);
+			passList.add( encodedPass );
+
+			cipherText = cipher.doFinal(userName.getBytes("UTF-8"));
+			encodedPass = enc.encodeToString(cipherText);
+			userList.add( encodedPass );
+
+			idList.add( id );
+
+			File passKeep = new File("PassKeep");
+			pw = new PrintWriter(passKeep);
+			for ( int i = 0; i < idList.size() ; i++ )
+			{
+				pw.println(idList.get(i) +"\t"+ userList.get(i) +"\t"+ passList.get(i));
+			}
+			pw.close();
+		}
+		catch ( NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeySpecException | InvalidKeyException
+				| BadPaddingException | UnsupportedEncodingException | IllegalBlockSizeException | FileNotFoundException e )
+		{
+			System.out.println( "Error. Can not add Username and Password Combo." );
+			Arrays.fill( s,'0' );	//double check just in case program fails before the one in the try block
+		}
+
 	}
 
 	public static void cls() throws InterruptedException{
@@ -151,8 +215,7 @@ public class BetterPassKeep {
 		System.out.flush();
 	}
 	
-	public static void createFile() 
-	throws NoSuchProviderException, NoSuchAlgorithmException {
+	public static void createFile() throws NoSuchProviderException, NoSuchAlgorithmException {
 		Scanner sc = new Scanner(System.in);
 		try {
 			// Create secure random number
@@ -189,16 +252,16 @@ public class BetterPassKeep {
 			
 			// Create PassKeep file where values are stored
 			File passKeep = new File("PassKeep");
-      if(!passKeep.exists()) passKeep.createNewFile();
-      pw = new PrintWriter(passKeep);
-      pw.println(idList.get(0) +"\t"+ userList.get(0) +"\t"+ passList.get(0));
-      pw.close();
-      isFileCreated = true;
-		} catch (IOException e) {System.out.println("ERROR CREATING FILE");} 
+      		if(!passKeep.exists()) passKeep.createNewFile();
+      		pw = new PrintWriter(passKeep);
+      		pw.println(idList.get(0) +"\t"+ userList.get(0) +"\t"+ passList.get(0));
+      		pw.close();
+      		isFileCreated = true;
+		} catch (IOException e) {System.out.println("ERROR CREATING FILE");}
 	}
 	
-	public static boolean verifyPassword()
-	throws NoSuchProviderException, NoSuchAlgorithmException, InterruptedException{
+	public static boolean verifyPassword() throws NoSuchProviderException, NoSuchAlgorithmException, InterruptedException{
+
 		// Read in salt from hashNum
 		try{
 			br = new BufferedReader(new FileReader("HashNum"));
@@ -259,12 +322,12 @@ public class BetterPassKeep {
 
 	public static Stream<Character> getRandomAlphabets (int count, boolean upperCase){
 		Random random = new SecureRandom();
-    IntStream randomAlphabets;
-    if(upperCase)
-			randomAlphabets = random.ints(count, 65, 90);
-    else 
-     	randomAlphabets = random.ints(count, 97, 122);
-    return randomAlphabets.mapToObj(data -> (char) data);
+    	IntStream randomAlphabets;
+    	if(upperCase)
+    		randomAlphabets = random.ints(count, 65, 90);
+    	else
+     		randomAlphabets = random.ints(count, 97, 122);
+    	return randomAlphabets.mapToObj(data -> (char) data);
 	}
 
 	public static String randomPassword(){

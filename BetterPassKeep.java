@@ -158,10 +158,11 @@ public class BetterPassKeep {
 	}
 
 	public static void printFile()
-	{
+	throws InterruptedException, InvalidAlgorithmParameterException {
 		char[] s = {0}, idChar = {0};
 		byte[] user = {0}, pass = {0}, salt = {0};
-		Base64.Decoder decoder = Base64.getDecoder();
+		byte[] SALT = {(byte) 0xb0, (byte) 0x7b, (byte) 0xf5, (byte) 0x22, 
+									 (byte) 0xc8, (byte) 0xd6, (byte) 0x08, (byte) 0xb8};
 
 		try{
 			s = passList.get(0).toCharArray();
@@ -169,24 +170,23 @@ public class BetterPassKeep {
 			Arrays.fill(s, '0');
 
 			br = new BufferedReader(new FileReader("HashNum"));
-			salt = br.readLine().getBytes(  );
-
-
-			SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance( "PBEWithHmacSHA256AndAES_128" );
+			salt = br.readLine().getBytes();
+			
+			Base64.Decoder decoder = Base64.getDecoder();
+			SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance( "PBEWithHmacSHA256AndAES_256" );
 			SecretKey secretKey = secretKeyFactory.generateSecret( pbeKeySpec );
-
-			//don't know what the iteration count (10000) does....
-			PBEParameterSpec pbeParameterSpec = new PBEParameterSpec( salt,10000 );
-
-
-			Arrays.fill( salt, (byte)0 );
-
-			Cipher cipher = Cipher.getInstance( "PBEWithHmacSHA256AndAES_128" );
-			cipher.init( Cipher.DECRYPT_MODE, secretKey, pbeParameterSpec );
-
+			Cipher cipher = Cipher.getInstance( "PBEWithHmacSHA256AndAES_256" );
+			MessageDigest md = MessageDigest.getInstance("MD5");
+			
 			//i starts at 1 because we don't want to print the master stuff
 			for ( int i = 1; i < idList.size() ; i++ )
 			{
+				
+				String hashID = idList.get(i);
+				byte[] hashedID = md.digest(hashID.getBytes(StandardCharsets.UTF_8));
+				IvParameterSpec ivParamSpec = new IvParameterSpec(hashedID);
+				PBEParameterSpec pbeParamSpec = new PBEParameterSpec(SALT, 10000, ivParamSpec);
+				cipher.init( Cipher.DECRYPT_MODE, secretKey, pbeParamSpec );
 				idChar = idList.get( i ).toCharArray();
 				user = cipher.doFinal( decoder.decode( userList.get( i ) ) );
 				pass = cipher.doFinal( decoder.decode( passList.get( i ) ) );
@@ -207,15 +207,23 @@ public class BetterPassKeep {
 		}
 	}
 
-	public static void addPassword() throws InterruptedException
-	{
+	public static void addPassword() 
+	throws InterruptedException, InvalidAlgorithmParameterException {
 		Scanner sc = new Scanner( System.in );
 		char[] s = {'0'};
+		byte[] salt = {(byte) 0xb0, (byte) 0x7b, (byte) 0xf5, (byte) 0x22, 
+									 (byte) 0xc8, (byte) 0xd6, (byte) 0x08, (byte) 0xb8};
 		Base64.Encoder enc = Base64.getEncoder();
+		boolean flag = false;
+		String id = null;
 
 		//Read in new username/password combo
-		System.out.println( "Enter an ID for your username and password combination: " );
-		String id = sc.nextLine();
+		while(flag==false){
+			System.out.println( "Enter an ID for your username and password combination: " );
+			id = sc.nextLine();
+			if (idList.contains(id)) System.out.println("ID already exists, try again!");
+			else flag=true;
+		}
 		System.out.println( "Enter the username for " + id + " : " );
 		char[] userName = sc.nextLine().toCharArray();
 		System.out.println( "Enter the password for " + id + " : " );
@@ -224,17 +232,21 @@ public class BetterPassKeep {
 		//Encrypt
 		try
 		{
+			MessageDigest md = MessageDigest.getInstance("MD5");
+			String hashID = id;
+			byte[] hashedID = md.digest(hashID.getBytes(StandardCharsets.UTF_8));
+			IvParameterSpec ivParamSpec = new IvParameterSpec(hashedID);
 			s = passList.get(0).toCharArray();
 			PBEKeySpec pbeKeySpec = new PBEKeySpec( s );
-
+			PBEParameterSpec pbeParamSpec = new PBEParameterSpec(salt, 10000, ivParamSpec);
 			//https://nvisium.com/blog/2016/03/31/secure-password-strings.html
 			Arrays.fill( s,'0' );
 
-			SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance( "PBEWithHmacSHA256AndAES_128" );
+			SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance( "PBEWithHmacSHA256AndAES_256" );
 			SecretKey secretKey = secretKeyFactory.generateSecret( pbeKeySpec );
 
-			Cipher cipher = Cipher.getInstance( "PBEWithHmacSHA256AndAES_128" );
-			cipher.init( Cipher.ENCRYPT_MODE,secretKey );
+			Cipher cipher = Cipher.getInstance( "PBEWithHmacSHA256AndAES_256" );
+			cipher.init( Cipher.ENCRYPT_MODE, secretKey, pbeParamSpec );
 
 			byte[] cipherText = cipher.doFinal(String.valueOf(password).getBytes( StandardCharsets.UTF_8 ));
 			Arrays.fill( password,'0' );

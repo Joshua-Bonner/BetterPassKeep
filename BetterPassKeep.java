@@ -38,10 +38,14 @@ public class BetterPassKeep {
 				 IllegalBlockSizeException, BadPaddingException, UnsupportedEncodingException, 
 				 InvalidAlgorithmParameterException, InterruptedException, NoSuchProviderException {
 
+		SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance( "PBEWithHmacSHA256AndAES_256" );
+		Cipher cipher = Cipher.getInstance( "PBEWithHmacSHA256AndAES_256" );
+		MessageDigest md = MessageDigest.getInstance("MD5");
 	  boolean correctInput = false;
 	  int userChoice = -1;
 	  File passKeep = new File("PassKeep");
 	  isFileCreated = passKeep.exists();
+	  
 	  if (isFileCreated == true){
 	  	readFile();
 	  	if(!verifyPassword()) System.exit(0);
@@ -117,7 +121,7 @@ public class BetterPassKeep {
           		System.out.println("\nFile not created! Please choose option 1");
           	else if(verifyPassword()){
           		readFile();
-				addPassword();
+							addPassword(cipher, md, secretKeyFactory);
           	}
           	cls();
           	break;
@@ -128,9 +132,9 @@ public class BetterPassKeep {
             	System.out.println("\nFile not created! Please choose option 1");
           	else if (verifyPassword()){
 				// TODO: Add method to Decrypt File with Master Password and Then Show Results
-				readFile();
-				printFile();
-			}
+						readFile();
+						printFile(cipher, md, secretKeyFactory);
+				}
 		  	cls();
           	break;
 					
@@ -157,26 +161,19 @@ public class BetterPassKeep {
       System.out.println("\nUnknown Error Occured");
 	}
 
-	public static void printFile()
+	public static void printFile(Cipher cipher, MessageDigest md, SecretKeyFactory secretKeyFactory)
 	throws InterruptedException, InvalidAlgorithmParameterException {
 		char[] s = {0}, idChar = {0};
-		byte[] user = {0}, pass = {0}, salt = {0};
-		byte[] SALT = {(byte) 0xb0, (byte) 0x7b, (byte) 0xf5, (byte) 0x22, 
+		byte[] user = {0}, pass = {0};
+		byte[] salt = {(byte) 0xb0, (byte) 0x7b, (byte) 0xf5, (byte) 0x22, 
 									 (byte) 0xc8, (byte) 0xd6, (byte) 0x08, (byte) 0xb8};
 
 		try{
 			s = passList.get(0).toCharArray();
 			PBEKeySpec pbeKeySpec = new PBEKeySpec( s );
 			Arrays.fill(s, '0');
-
-			br = new BufferedReader(new FileReader("HashNum"));
-			salt = br.readLine().getBytes();
-			
 			Base64.Decoder decoder = Base64.getDecoder();
-			SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance( "PBEWithHmacSHA256AndAES_256" );
 			SecretKey secretKey = secretKeyFactory.generateSecret( pbeKeySpec );
-			Cipher cipher = Cipher.getInstance( "PBEWithHmacSHA256AndAES_256" );
-			MessageDigest md = MessageDigest.getInstance("MD5");
 			
 			//i starts at 1 because we don't want to print the master stuff
 			for ( int i = 1; i < idList.size() ; i++ )
@@ -185,14 +182,15 @@ public class BetterPassKeep {
 				String hashID = idList.get(i);
 				byte[] hashedID = md.digest(hashID.getBytes(StandardCharsets.UTF_8));
 				IvParameterSpec ivParamSpec = new IvParameterSpec(hashedID);
-				PBEParameterSpec pbeParamSpec = new PBEParameterSpec(SALT, 10000, ivParamSpec);
+
+				PBEParameterSpec pbeParamSpec = new PBEParameterSpec(salt, 10000, ivParamSpec);
 				cipher.init( Cipher.DECRYPT_MODE, secretKey, pbeParamSpec );
 				idChar = idList.get( i ).toCharArray();
 				user = cipher.doFinal( decoder.decode( userList.get( i ) ) );
 				pass = cipher.doFinal( decoder.decode( passList.get( i ) ) );
 				System.out.print( idChar + "\t" + user + "\t" + pass );
 				Arrays.fill( idChar, '0' );
-				Arrays.fill( user, ( byte ) 0 );
+				Arrays.fill( user, (byte) 0 );
 				Arrays.fill( pass, (byte) 0 );
 			}
 
@@ -201,13 +199,12 @@ public class BetterPassKeep {
 			System.out.println( "Error" );
 			Arrays.fill(s, '0');
 			Arrays.fill( idChar, '0' );
-			Arrays.fill( user, ( byte ) 0 );
+			Arrays.fill( user, (byte) 0 );
 			Arrays.fill( pass, (byte) 0 );
-			Arrays.fill( salt, (byte)0 );
 		}
 	}
 
-	public static void addPassword() 
+	public static void addPassword(Cipher cipher, MessageDigest md, SecretKeyFactory secretKeyFactory) 
 	throws InterruptedException, InvalidAlgorithmParameterException {
 		Scanner sc = new Scanner( System.in );
 		char[] s = {'0'};
@@ -232,20 +229,16 @@ public class BetterPassKeep {
 		//Encrypt
 		try
 		{
-			MessageDigest md = MessageDigest.getInstance("MD5");
 			String hashID = id;
 			byte[] hashedID = md.digest(hashID.getBytes(StandardCharsets.UTF_8));
 			IvParameterSpec ivParamSpec = new IvParameterSpec(hashedID);
+			
 			s = passList.get(0).toCharArray();
 			PBEKeySpec pbeKeySpec = new PBEKeySpec( s );
 			PBEParameterSpec pbeParamSpec = new PBEParameterSpec(salt, 10000, ivParamSpec);
-			//https://nvisium.com/blog/2016/03/31/secure-password-strings.html
 			Arrays.fill( s,'0' );
-
-			SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance( "PBEWithHmacSHA256AndAES_256" );
+			
 			SecretKey secretKey = secretKeyFactory.generateSecret( pbeKeySpec );
-
-			Cipher cipher = Cipher.getInstance( "PBEWithHmacSHA256AndAES_256" );
 			cipher.init( Cipher.ENCRYPT_MODE, secretKey, pbeParamSpec );
 
 			byte[] cipherText = cipher.doFinal(String.valueOf(password).getBytes( StandardCharsets.UTF_8 ));
@@ -267,7 +260,7 @@ public class BetterPassKeep {
 			pw.println(idList.get(i) +"\t"+ userList.get(i) +"\t"+ passList.get(i));
 			pw.close();
 		}
-		catch ( NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeySpecException | InvalidKeyException
+		catch (InvalidKeySpecException | InvalidKeyException
 				| BadPaddingException | IllegalBlockSizeException | IOException e )
 		{
 			e.printStackTrace();	//TODO: Remove this line - Debugging ONLY!!!!!!
